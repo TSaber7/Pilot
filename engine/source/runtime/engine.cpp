@@ -18,7 +18,7 @@ namespace Pilot
 {
     bool g_is_editor_mode {true};
 
-    const FrameBuffer* getFrameBuffer(ThreeFrameBuffers* t, const PilotRenderer* r)
+    const FrameBuffer* getFrameBuffer(ThreeFrameBuffers* t, const PilotRenderer*)
     {
         return (t->consumingBufferShift());
     }
@@ -70,11 +70,11 @@ namespace Pilot
 
         LOG_INFO("engine shutdown");
 
-        PublicSingleton<SceneManager>::getInstance().clear();
-        PublicSingleton<WorldManager>::getInstance().clear();
-        PublicSingleton<PUIManager>::getInstance().clear();
-        PublicSingleton<AssetManager>::getInstance().clear();
-        PublicSingleton<ConfigManager>::getInstance().clear();
+        SceneManager::getInstance().clear();
+        WorldManager::getInstance().clear();
+        PUIManager::getInstance().clear();
+        AssetManager::getInstance().clear();
+        ConfigManager::getInstance().clear();
 
         Reflection::TypeMetaRegister::Unregister();
 
@@ -100,21 +100,40 @@ namespace Pilot
             }
 
             logicalTick(delta_time);
+            fps(delta_time);
+
             if (!rendererTick())
                 return;
         }
     }
 
-    void PilotEngine::logicalTick(const float delta_time)
+    void PilotEngine::logicalTick(float delta_time)
     {
         m_tri_frame_buffer.producingBufferShift();
-        PublicSingleton<WorldManager>::getInstance().tick(delta_time);
-        PublicSingleton<SceneManager>::getInstance().tick(m_tri_frame_buffer.getProducingBuffer());
-        PublicSingleton<InputSystem>::getInstance().tick();
-        // PublicSingleton<PhysicsSystem>::getInstance().tick(delta_time);
+        WorldManager::getInstance().tick(delta_time);
+        SceneManager::getInstance().tick(m_tri_frame_buffer.getProducingBuffer());
+        InputSystem::getInstance().tick();
+        // PhysicsSystem::getInstance().tick(delta_time);
     }
 
     bool PilotEngine::rendererTick() { return m_renderer->tick(); }
+
+    const float PilotEngine::k_fps_alpha = 1.f / 100;
+    void        PilotEngine::fps(float delta_time)
+    {
+        m_frame_count++;
+
+        if (m_frame_count == 1)
+        {
+            m_average_duration = delta_time;
+        }
+        else
+        {
+            m_average_duration = m_average_duration * (1 - k_fps_alpha) + delta_time * k_fps_alpha;
+        }
+
+        m_fps = static_cast<int>(1.f / m_average_duration);
+    }
 
     std::shared_ptr<SurfaceIO> PilotEngine::getSurfaceIO() { return m_renderer->getPSurface()->getSurfaceIO(); }
 
@@ -125,7 +144,7 @@ namespace Pilot
         three_buffers._struct._C = new FrameBuffer();
 
         // tri frame buffers are designed to use same scene now
-        auto current_scene                = PublicSingleton<SceneManager>::getInstance().getCurrentScene();
+        auto current_scene                = SceneManager::getInstance().getCurrentScene();
         three_buffers._struct._A->m_scene = current_scene;
         three_buffers._struct._B->m_scene = current_scene;
         three_buffers._struct._C->m_scene = current_scene;

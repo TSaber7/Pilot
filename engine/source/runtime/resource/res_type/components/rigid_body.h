@@ -1,4 +1,8 @@
 #pragma once
+
+#include "runtime/resource/res_type/data/basic_shape.h"
+
+#include "runtime/core/math/axis_aligned.h"
 #include "runtime/core/math/transform.h"
 #include "runtime/core/meta/reflection/reflection.h"
 
@@ -12,63 +16,35 @@ namespace Pilot
         invalid
     };
 
-    REFLECTION_TYPE(RigidBodyShapeBase)
-    CLASS(RigidBodyShapeBase, WhiteListFields)
+    REFLECTION_TYPE(RigidBodyShape)
+    CLASS(RigidBodyShape, WhiteListFields)
     {
-        REFLECTION_BODY(RigidBodyShapeBase);
+        REFLECTION_BODY(RigidBodyShape);
 
     public:
         Transform          m_global_transform;
+        AxisAlignedBox     m_bounding_box;
         RigidBodyShapeType m_type {RigidBodyShapeType::invalid};
+
         META(Enable)
         Transform m_local_transform;
+        META(Enable)
+        Reflection::ReflectionPtr<Geometry> m_geometry;
+
+        RigidBodyShape() = default;
+        RigidBodyShape(const RigidBodyShape& res);
+
+        ~RigidBodyShape();
     };
 
-    REFLECTION_TYPE(RigidBodyBoxShape)
-    CLASS(RigidBodyBoxShape : public RigidBodyShapeBase, Fields)
+    REFLECTION_TYPE(RigidBodyComponentRes)
+    CLASS(RigidBodyComponentRes, Fields)
     {
-        REFLECTION_BODY(RigidBodyBoxShape);
+        REFLECTION_BODY(RigidBodyComponentRes);
 
     public:
-        Vector3 m_half_extents {0.5f, 0.5f, 0.5f};
-    };
-
-    REFLECTION_TYPE(RigidBodySphereShape)
-    CLASS(RigidBodySphereShape : public RigidBodyShapeBase, Fields)
-    {
-        REFLECTION_BODY(RigidBodySphereShape);
-
-    public:
-        float m_radius {0.5f};
-    };
-
-    REFLECTION_TYPE(RigidBodyCapsuleShape)
-    CLASS(RigidBodyCapsuleShape : public RigidBodyShapeBase, Fields)
-    {
-        REFLECTION_BODY(RigidBodyCapsuleShape);
-
-    public:
-        float m_radius {0.3f};
-        float m_half_height {0.7f};
-    };
-
-    REFLECTION_TYPE(RigidBodyActorRes)
-    CLASS(RigidBodyActorRes, Fields)
-    {
-        REFLECTION_BODY(RigidBodyActorRes);
-
-    public:
-        std::vector<Reflection::ReflectionPtr<RigidBodyShapeBase>> m_shapes;
-        float                                                      m_inverse_mass;
-        int                                                        m_actor_type;
-
-        ~RigidBodyActorRes()
-        {
-            for (auto& shape : m_shapes)
-            {
-                PILOT_REFLECTION_DELETE(shape);
-            }
-            m_shapes.clear();
-        }
+        std::vector<RigidBodyShape> m_shapes;
+        float                       m_inverse_mass;
+        int                         m_actor_type;
     };
 } // namespace Pilot

@@ -8,22 +8,27 @@
 
 namespace Pilot
 {
-    RigidBodyComponent::RigidBodyComponent(const RigidBodyActorRes& rigidbody_ast, GObject* parent_object) :
-        Component(parent_object)
+    RigidBodyComponent::RigidBodyComponent(const RigidBodyComponentRes& rigidbody_res, GObject* parent_object) :
+        Component(parent_object), m_rigidbody_res(rigidbody_res)
     {
         const TransformComponent* parent_transform = m_parent_object->tryGetComponentConst(TransformComponent);
 
         m_physics_actor = PhysicsSystem::getInstance().createPhysicsActor(
-            parent_object, parent_transform->getTransformConst(), rigidbody_ast);
+            parent_object, parent_transform->getTransformConst(), rigidbody_res);
     }
 
     RigidBodyComponent::~RigidBodyComponent()
     {
         if (m_physics_actor)
         {
-            delete m_physics_actor;
+            PhysicsSystem::getInstance().removePhyicsActor(m_physics_actor);
             m_physics_actor = nullptr;
         }
+    }
+
+    void RigidBodyComponent::updateGlobalTransform(const Transform& transform)
+    {
+        m_physics_actor->setGlobalTransform(transform);
     }
 
 } // namespace Pilot

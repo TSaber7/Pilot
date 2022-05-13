@@ -29,7 +29,7 @@ namespace Pilot
         if (trace > 0.0)
         {
             // |w| > 1/2, may as well choose w > 1/2
-            root = sqrt(trace + 1.0f); // 2w
+            root = std::sqrt(trace + 1.0f); // 2w
             w    = 0.5f * root;
             root = 0.5f / root; // 1/(4w)
             x    = (rotation[2][1] - rotation[1][2]) * root;
@@ -48,7 +48,7 @@ namespace Pilot
             size_t j = s_iNext[i];
             size_t k = s_iNext[j];
 
-            root              = sqrt(rotation[i][i] - rotation[j][j] - rotation[k][k] + 1.0f);
+            root              = std::sqrt(rotation[i][i] - rotation[j][j] - rotation[k][k] + 1.0f);
             float* apkQuat[3] = {&x, &y, &z};
             *apkQuat[i]       = 0.5f * root;
             root              = 0.5f / root;
@@ -168,7 +168,7 @@ namespace Pilot
         fromRotationMatrix(rot);
     }
     //-----------------------------------------------------------------------
-    Vector3 Quaternion::xAxis(void) const
+    Vector3 Quaternion::xAxis() const
     {
         // float tx  = 2.0*x;
         float ty  = 2.0f * y;
@@ -183,7 +183,7 @@ namespace Pilot
         return Vector3(1.0f - (tyy + tzz), txy + twz, txz - twy);
     }
     //-----------------------------------------------------------------------
-    Vector3 Quaternion::yAxis(void) const
+    Vector3 Quaternion::yAxis() const
     {
         float tx  = 2.0f * x;
         float ty  = 2.0f * y;
@@ -198,7 +198,7 @@ namespace Pilot
         return Vector3(txy - twz, 1.0f - (txx + tzz), tyz + twx);
     }
     //-----------------------------------------------------------------------
-    Vector3 Quaternion::zAxis(void) const
+    Vector3 Quaternion::zAxis() const
     {
         float tx  = 2.0f * x;
         float ty  = 2.0f * y;

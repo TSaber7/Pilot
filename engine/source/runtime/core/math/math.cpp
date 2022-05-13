@@ -9,18 +9,8 @@ namespace Pilot
 
     bool Math::realEqual(float a, float b, float tolerance /* = std::numeric_limits<float>::epsilon() */)
     {
-        if (fabs(b - a) <= tolerance)
-            return true;
-        else
-            return false;
+        return std::fabs(b - a) <= tolerance;
     }
-
-    float Math::clamp(const float v, const float min, const float max)
-    {
-        return (v < min) ? min : ((v > max) ? max : v);
-    }
-
-    float Math::getMaxElement(float x, float y, float z) { return std::max(std::max(x, y), z); }
 
     float Math::degreesToRadians(float degrees) { return degrees * Math_fDeg2Rad; }
 
@@ -30,32 +20,32 @@ namespace Pilot
     {
         if (k_AngleUnit == AngleUnit::AU_DEGREE)
             return angleunits * Math_fDeg2Rad;
-        else
-            return angleunits;
+
+        return angleunits;
     }
 
     float Math::radiansToAngleUnits(float radians)
     {
         if (k_AngleUnit == AngleUnit::AU_DEGREE)
             return radians * Math_fRad2Deg;
-        else
-            return radians;
+
+        return radians;
     }
 
     float Math::angleUnitsToDegrees(float angleunits)
     {
         if (k_AngleUnit == AngleUnit::AU_RADIAN)
             return angleunits * Math_fRad2Deg;
-        else
-            return angleunits;
+
+        return angleunits;
     }
 
     float Math::degreesToAngleUnits(float degrees)
     {
         if (k_AngleUnit == AngleUnit::AU_RADIAN)
             return degrees * Math_fDeg2Rad;
-        else
-            return degrees;
+
+        return degrees;
     }
 
     Radian Math::acos(float value)
@@ -63,14 +53,12 @@ namespace Pilot
         if (-1.0 < value)
         {
             if (value < 1.0)
-                return Radian(acos(value));
-            else
-                return Radian(0.0);
+                return Radian(::acos(value));
+
+            return Radian(0.0);
         }
-        else
-        {
-            return Radian(Math_PI);
-        }
+
+        return Radian(Math_PI);
     }
     //-----------------------------------------------------------------------
     Radian Math::asin(float value)
@@ -78,14 +66,12 @@ namespace Pilot
         if (-1.0 < value)
         {
             if (value < 1.0)
-                return Radian(asin(value));
-            else
-                return Radian(Math_HALF_PI);
+                return Radian(::asin(value));
+
+            return Radian(Math_HALF_PI);
         }
-        else
-        {
-            return Radian(-Math_HALF_PI);
-        }
+
+        return Radian(-Math_HALF_PI);
     }
 
     Matrix4x4
@@ -165,12 +151,8 @@ namespace Pilot
         return ret;
     }
 
-    Matrix4x4 Math::makeOrthographicProjectionMatrix(const float left,
-                                                     const float right,
-                                                     const float bottom,
-                                                     const float top,
-                                                     const float znear,
-                                                     const float zfar)
+    Matrix4x4
+    Math::makeOrthographicProjectionMatrix(float left, float right, float bottom, float top, float znear, float zfar)
     {
         float inv_width    = 1.0f / (right - left);
         float inv_height   = 1.0f / (top - bottom);

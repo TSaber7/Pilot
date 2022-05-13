@@ -68,7 +68,7 @@
 #include <iostream>
 #include <set>
 #include <stdexcept>
-#include <string.h>
+#include <cstring>
 #include <string>
 
 void Pilot::PVulkanContext::initialize(GLFWwindow* window)
@@ -93,6 +93,7 @@ void Pilot::PVulkanContext::initialize(GLFWwindow* window)
     // https://docs.microsoft.com/en-us/cpp/preprocessor/predefined-macros
     char const* vk_layer_path = PILOT_XSTR(PILOT_VK_LAYER_PATH);
     SetEnvironmentVariableA("VK_LAYER_PATH", vk_layer_path);
+    SetEnvironmentVariableA("DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1", "1");
 #else
 #error Unknown Compiler
 #endif
@@ -200,7 +201,7 @@ std::vector<const char*> Pilot::PVulkanContext::getRequiredExtensions()
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-    if (Pilot::PVulkanManager::m_enable_validation_Layers || Pilot::PVulkanManager::m_enable_debug_untils_label)
+    if (Pilot::PVulkanManager::m_enable_validation_Layers || Pilot::PVulkanManager::m_enable_debug_utils_label)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
@@ -291,7 +292,7 @@ void Pilot::PVulkanContext::initializeDebugMessenger()
         }
     }
 
-    if (Pilot::PVulkanManager::m_enable_debug_untils_label)
+    if (Pilot::PVulkanManager::m_enable_debug_utils_label)
     {
         _vkCmdBeginDebugUtilsLabelEXT =
             (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(_instance, "vkCmdBeginDebugUtilsLabelEXT");
@@ -323,18 +324,43 @@ void Pilot::PVulkanContext::initializePhysicalDevice()
         std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
         vkEnumeratePhysicalDevices(_instance, &physical_device_count, physical_devices.data());
 
+        std::vector<std::pair<int, VkPhysicalDevice>> ranked_physical_devices;
         for (const auto& device : physical_devices)
         {
-            if (isDeviceSuitable(device))
+            VkPhysicalDeviceProperties physical_device_properties;
+            vkGetPhysicalDeviceProperties(device, &physical_device_properties);
+            int score = 0;
+
+            if (physical_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
             {
-                _physical_device = device;
+                score += 1000;
+            }
+            else if (physical_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+            {
+                score += 100;
+            }
+
+            ranked_physical_devices.push_back({score, device});
+        }
+
+        std::sort(ranked_physical_devices.begin(),
+                  ranked_physical_devices.end(),
+                  [](const std::pair<int, VkPhysicalDevice>& p1, const std::pair<int, VkPhysicalDevice>& p2) {
+                      return p1 > p2;
+                  });
+
+        for (const auto& device : ranked_physical_devices)
+        {
+            if (isDeviceSuitable(device.second))
+            {
+                _physical_device = device.second;
                 break;
             }
         }
 
-        if (VK_NULL_HANDLE == _physical_device)
+        if (_physical_device == VK_NULL_HANDLE)
         {
-            throw std::runtime_error("enumerate physical devices");
+            throw std::runtime_error("failed to find suitable physical device");
         }
     }
 }
@@ -360,15 +386,16 @@ void Pilot::PVulkanContext::createLogicalDevice()
         queue_create_infos.push_back(queue_create_info);
     }
 
-    VkPhysicalDeviceFeatures physical_device_features = {};
     // physical device features
+    VkPhysicalDeviceFeatures physical_device_features = {};
+    
     physical_device_features.samplerAnisotropy = VK_TRUE;
-
-    // axis
-    physical_device_features.vertexPipelineStoresAndAtomics = VK_TRUE;
 
     // support inefficient readback storage buffer
     physical_device_features.fragmentStoresAndAtomics = VK_TRUE;
+
+    // support independent blending
+    physical_device_features.independentBlend = VK_TRUE;
 
     // support geometry shader
     if (Pilot::PVulkanManager::m_enable_point_light_shadow)
@@ -411,6 +438,7 @@ void Pilot::PVulkanContext::createLogicalDevice()
     _vkCmdBindIndexBuffer    = (PFN_vkCmdBindIndexBuffer)vkGetDeviceProcAddr(_device, "vkCmdBindIndexBuffer");
     _vkCmdBindDescriptorSets = (PFN_vkCmdBindDescriptorSets)vkGetDeviceProcAddr(_device, "vkCmdBindDescriptorSets");
     _vkCmdDrawIndexed        = (PFN_vkCmdDrawIndexed)vkGetDeviceProcAddr(_device, "vkCmdDrawIndexed");
+    _vkCmdClearAttachments   = (PFN_vkCmdClearAttachments)vkGetDeviceProcAddr(_device, "vkCmdClearAttachments");
 
     _depth_image_format = findDepthFormat();
 }
@@ -438,13 +466,14 @@ void Pilot::PVulkanContext::createFramebufferImageAndView()
                              _swapchain_extent.height,
                              _depth_image_format,
                              VK_IMAGE_TILING_OPTIMAL,
-                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+                             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                              _depth_image,
                              _depth_image_memory,
                              0,
                              1,
                              1);
+                             
     _depth_image_view = PVulkanUtil::createImageView(
         _device, _depth_image, _depth_image_format, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D, 1, 1);
 }
@@ -723,9 +752,9 @@ VkSurfaceFormatKHR Pilot::PVulkanContext::chooseSwapchainSurfaceFormatFromDetail
 {
     for (const auto& surface_format : available_surface_formats)
     {
-        // after selecting the VK_FORMAT_B8G8R8A8_SRGB surface format,
+        // TODO: select the VK_FORMAT_B8G8R8A8_SRGB surface format,
         // there is no need to do gamma correction in the fragment shader
-        if (surface_format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+        if (surface_format.format == VK_FORMAT_B8G8R8A8_UNORM &&
             surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             return surface_format;

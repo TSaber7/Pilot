@@ -9,15 +9,11 @@ namespace Pilot
         friend class PublicSingleton<PUIManager>;
 
     public:
-        PUIManager(const PUIManager&) = delete;
-        PUIManager& operator=(const PUIManager&) = delete;
-        //
-    protected:
-        PUIManager() = default;
-
-    public:
         int initialize();
         int update();
         int clear();
+
+    protected:
+        PUIManager() = default;
     };
 } // namespace Pilot

@@ -6,19 +6,12 @@ namespace Pilot
 
     CollisionDetection::~CollisionDetection() {}
 
-    bool CollisionDetection::IsOverlap(const Vector3& position_a,
-                                       const Vector3& position_b,
-                                       const Vector3& half_dimensions_a,
-                                       const Vector3& half_dimensions_b)
+    bool CollisionDetection::IsAABBOverlapped(const AxisAlignedBox& aabb_a, const AxisAlignedBox& aabb_b)
     {
-        Vector3 delta      = position_b - position_a;
-        Vector3 total_size = half_dimensions_b.absoluteCopy() + half_dimensions_a.absoluteCopy();
-        if (abs(delta.x) < total_size.x && abs(delta.y) < total_size.y && abs(delta.z) < total_size.z)
-        {
-            return true;
-        }
+        Vector3 delta      = (aabb_a.getCenter() - aabb_b.getCenter()).absoluteCopy();
+        Vector3 total_size = aabb_a.getHalfExtent() + aabb_b.getHalfExtent();
 
-        return false;
+        return delta.x < total_size.x && delta.y < total_size.y && delta.z < total_size.z;
     }
 
     bool CollisionDetection::ObjectIntersection(PhysicsActor&  actor_a,
@@ -29,15 +22,15 @@ namespace Pilot
     {
         bool collision_status = false;
 
-        const std::vector<RigidBodyShapeBase*>& actor_a_shapes = actor_a.getShapes();
-        const std::vector<RigidBodyShapeBase*>& actor_b_shapes = actor_b.getShapes();
+        const std::vector<RigidBodyShape>& actor_a_shapes = actor_a.getShapes();
+        const std::vector<RigidBodyShape>& actor_b_shapes = actor_b.getShapes();
 
         for (const auto& actor_a_shape_iter : actor_a_shapes)
         {
             for (const auto& actor_b_shape_iter : actor_b_shapes)
             {
-                if (actor_a_shape_iter->m_type == RigidBodyShapeType::invalid ||
-                    actor_b_shape_iter->m_type == RigidBodyShapeType::invalid)
+                if (actor_a_shape_iter.m_type == RigidBodyShapeType::invalid ||
+                    actor_b_shape_iter.m_type == RigidBodyShapeType::invalid)
                 {
                     return false;
                 }
@@ -46,7 +39,7 @@ namespace Pilot
                 collision_info.m_id_b = id_b;
 
                 Matrix4x4 shape_mat_a =
-                    actor_a.getTransform().getMatrix() * actor_a_shape_iter->m_local_transform.getMatrix();
+                    actor_a.getTransform().getMatrix() * actor_a_shape_iter.m_local_transform.getMatrix();
                 Vector3    shape_a_position;
                 Quaternion shape_a_rotation;
                 Vector3    shape_a_scale;
@@ -54,57 +47,57 @@ namespace Pilot
                 Transform shape_transform_a(shape_a_position, shape_a_rotation, shape_a_scale);
 
                 Matrix4x4 shape_mat_b =
-                    actor_b.getTransform().getMatrix() * actor_b_shape_iter->m_local_transform.getMatrix();
+                    actor_b.getTransform().getMatrix() * actor_b_shape_iter.m_local_transform.getMatrix();
                 Vector3    shape_b_position;
                 Quaternion shape_b_rotation;
                 Vector3    shape_b_scale;
                 shape_mat_b.decomposition(shape_b_position, shape_b_scale, shape_b_rotation);
                 Transform shape_transform_b(shape_b_position, shape_b_rotation, shape_b_scale);
 
-                if (actor_a_shape_iter->m_type == RigidBodyShapeType::box &&
-                    actor_b_shape_iter->m_type == RigidBodyShapeType::box)
+                if (actor_a_shape_iter.m_type == RigidBodyShapeType::box &&
+                    actor_b_shape_iter.m_type == RigidBodyShapeType::box)
                 {
                     collision_status |=
-                        AABBIntersection(static_cast<const RigidBodyBoxShape*>(actor_a_shape_iter)->m_half_extents,
-                                         static_cast<const RigidBodyBoxShape*>(actor_b_shape_iter)->m_half_extents,
+                        AABBIntersection(static_cast<const Box*>(actor_a_shape_iter.m_geometry)->m_half_extents,
+                                         static_cast<const Box*>(actor_b_shape_iter.m_geometry)->m_half_extents,
                                          shape_transform_a,
                                          shape_transform_b,
                                          collision_info);
                 }
 
-                if (actor_a_shape_iter->m_type == RigidBodyShapeType::sphere &&
-                    actor_b_shape_iter->m_type == RigidBodyShapeType::sphere)
+                if (actor_a_shape_iter.m_type == RigidBodyShapeType::sphere &&
+                    actor_b_shape_iter.m_type == RigidBodyShapeType::sphere)
                 {
                     collision_status |=
-                        SphereIntersection(static_cast<const RigidBodySphereShape*>(actor_a_shape_iter)->m_radius,
-                                           static_cast<const RigidBodySphereShape*>(actor_b_shape_iter)->m_radius,
+                        SphereIntersection(static_cast<const Sphere*>(actor_a_shape_iter.m_geometry)->m_radius,
+                                           static_cast<const Sphere*>(actor_b_shape_iter.m_geometry)->m_radius,
                                            shape_transform_a,
                                            shape_transform_b,
                                            collision_info);
                 }
 
-                if (actor_a_shape_iter->m_type == RigidBodyShapeType::box &&
-                    actor_b_shape_iter->m_type == RigidBodyShapeType::sphere)
+                if (actor_a_shape_iter.m_type == RigidBodyShapeType::box &&
+                    actor_b_shape_iter.m_type == RigidBodyShapeType::sphere)
                 {
-                    collision_status |= AABBSphereIntersection(
-                        static_cast<const RigidBodyBoxShape*>(actor_a_shape_iter)->m_half_extents,
-                        static_cast<const RigidBodySphereShape*>(actor_b_shape_iter)->m_radius,
-                        shape_transform_a,
-                        shape_transform_b,
-                        collision_info);
+                    collision_status |=
+                        AABBSphereIntersection(static_cast<const Box*>(actor_a_shape_iter.m_geometry)->m_half_extents,
+                                               static_cast<const Sphere*>(actor_b_shape_iter.m_geometry)->m_radius,
+                                               shape_transform_a,
+                                               shape_transform_b,
+                                               collision_info);
                 }
 
-                if (actor_a_shape_iter->m_type == RigidBodyShapeType::sphere &&
-                    actor_b_shape_iter->m_type == RigidBodyShapeType::box)
+                if (actor_a_shape_iter.m_type == RigidBodyShapeType::sphere &&
+                    actor_b_shape_iter.m_type == RigidBodyShapeType::box)
                 {
                     collision_info.m_id_a = id_b;
                     collision_info.m_id_b = id_a;
-                    collision_status |= AABBSphereIntersection(
-                        static_cast<const RigidBodyBoxShape*>(actor_b_shape_iter)->m_half_extents,
-                        static_cast<const RigidBodySphereShape*>(actor_a_shape_iter)->m_radius,
-                        shape_transform_b,
-                        shape_transform_a,
-                        collision_info);
+                    collision_status |=
+                        AABBSphereIntersection(static_cast<const Box*>(actor_b_shape_iter.m_geometry)->m_half_extents,
+                                               static_cast<const Sphere*>(actor_a_shape_iter.m_geometry)->m_radius,
+                                               shape_transform_b,
+                                               shape_transform_a,
+                                               collision_info);
                 }
             }
         }
@@ -148,10 +141,10 @@ namespace Pilot
                                               const Transform& world_transform_b,
                                               CollisionInfo&   collision_info)
     {
-        Vector3 box_a_pos = world_transform_a.m_position;
-        Vector3 box_b_pos = world_transform_b.m_position;
+        AxisAlignedBox bounding_a(world_transform_a.m_position, box_a_size);
+        AxisAlignedBox bounding_b(world_transform_b.m_position, box_b_size);
 
-        if (IsOverlap(box_a_pos, box_b_pos, box_a_size, box_b_size))
+        if (IsAABBOverlapped(bounding_a, bounding_b))
         {
             static const Vector3 faces[6] = {
                 Vector3 {-1, 0, 0},
@@ -162,10 +155,10 @@ namespace Pilot
                 Vector3 {0, 0, 1},
             };
 
-            Vector3 max_a = box_a_pos + box_a_size;
-            Vector3 min_a = box_a_pos - box_a_size;
-            Vector3 max_b = box_b_pos + box_b_size;
-            Vector3 min_b = box_b_pos - box_b_size;
+            Vector3 max_a = bounding_a.getMaxCorner();
+            Vector3 min_a = bounding_a.getMinCorner();
+            Vector3 max_b = bounding_b.getMaxCorner();
+            Vector3 min_b = bounding_b.getMinCorner();
 
             float distances[6] = {
                 (max_b.x - min_a.x),
@@ -194,8 +187,8 @@ namespace Pilot
         return false;
     }
 
-    bool CollisionDetection::SphereIntersection(const float      sphere_a_radius,
-                                                const float      sphere_b_radius,
+    bool CollisionDetection::SphereIntersection(float            sphere_a_radius,
+                                                float            sphere_b_radius,
                                                 const Transform& world_transform_a,
                                                 const Transform& world_transform_b,
                                                 CollisionInfo&   collision_info)
@@ -220,7 +213,7 @@ namespace Pilot
     }
 
     bool CollisionDetection::AABBSphereIntersection(const Vector3&   box_size,
-                                                    const float      sphere_radius,
+                                                    float            sphere_radius,
                                                     const Transform& world_transform_a,
                                                     const Transform& world_transform_b,
                                                     CollisionInfo&   collision_info)
@@ -284,7 +277,7 @@ namespace Pilot
             for (int j = 0; j < 3; ++j)
             {
                 p_r[i * 3 + j]  = volume_a_axis[i].dotProduct(volume_b_axis[j]);
-                p_rf[i * 3 + j] = 1e-6f + abs(p_r[i * 3 + j]);
+                p_rf[i * 3 + j] = 1e-6f + fabsf(p_r[i * 3 + j]);
             }
         }
 
@@ -294,7 +287,7 @@ namespace Pilot
             ra = half_dimensions_a[i];
             rb = half_dimensions_b[0] * p_rf[i * 3 + 0] + half_dimensions_b[1] * p_rf[i * 3 + 1] +
                  half_dimensions_b[2] * p_rf[i * 3 + 2];
-            t = abs(p_t[i]);
+            t = fabsf(p_t[i]);
 
             if (t > ra + rb)
             {
@@ -308,7 +301,7 @@ namespace Pilot
             ra = half_dimensions_a[0] * p_rf[0 * 3 + i] + half_dimensions_a[1] * p_rf[1 * 3 + i] +
                  half_dimensions_a[2] * p_rf[2 * 3 + i];
             rb = half_dimensions_b[i];
-            t  = abs(p_t[0] * p_r[0 * 3 + i] + p_t[1] * p_r[1 * 3 + i] + p_t[2] * p_r[2 * 3 + i]);
+            t  = fabsf(p_t[0] * p_r[0 * 3 + i] + p_t[1] * p_r[1 * 3 + i] + p_t[2] * p_r[2 * 3 + i]);
 
             if (t > ra + rb)
             {
@@ -320,63 +313,63 @@ namespace Pilot
         // L = A0 * B0
         ra = half_dimensions_a[1] * p_rf[2 * 3 + 0] + half_dimensions_a[2] * p_rf[1 * 3 + 0];
         rb = half_dimensions_b[1] * p_rf[0 * 3 + 2] + half_dimensions_b[2] * p_rf[0 * 3 + 1];
-        t  = abs(p_t[2] * p_r[1 * 3 + 0] - p_t[1] * p_r[2 * 3 + 0]);
+        t  = fabsf(p_t[2] * p_r[1 * 3 + 0] - p_t[1] * p_r[2 * 3 + 0]);
         if (t > ra + rb)
             return false;
 
         // L = A0 * B1
         ra = half_dimensions_a[1] * p_rf[2 * 3 + 1] + half_dimensions_a[2] * p_rf[1 * 3 + 1];
         rb = half_dimensions_b[0] * p_rf[0 * 3 + 2] + half_dimensions_b[2] * p_rf[0 * 3 + 0];
-        t  = abs(p_t[2] * p_r[1 * 3 + 1] - p_t[1] * p_r[2 * 3 + 1]);
+        t  = fabsf(p_t[2] * p_r[1 * 3 + 1] - p_t[1] * p_r[2 * 3 + 1]);
         if (t > ra + rb)
             return false;
 
         // L = A0 * B2
         ra = half_dimensions_a[1] * p_rf[2 * 3 + 2] + half_dimensions_a[2] * p_rf[1 * 3 + 2];
         rb = half_dimensions_b[0] * p_rf[0 * 3 + 1] + half_dimensions_b[1] * p_rf[0 * 3 + 0];
-        t  = abs(p_t[2] * p_r[1 * 3 + 2] - p_t[1] * p_r[2 * 3 + 2]);
+        t  = fabsf(p_t[2] * p_r[1 * 3 + 2] - p_t[1] * p_r[2 * 3 + 2]);
         if (t > ra + rb)
             return false;
 
         // L = A1 * B0
         ra = half_dimensions_a[0] * p_rf[2 * 3 + 0] + half_dimensions_a[2] * p_rf[0 * 3 + 0];
         rb = half_dimensions_b[1] * p_rf[1 * 3 + 2] + half_dimensions_b[2] * p_rf[1 * 3 + 1];
-        t  = abs(p_t[0] * p_r[2 * 3 + 0] - p_t[2] * p_r[0 * 3 + 0]);
+        t  = fabsf(p_t[0] * p_r[2 * 3 + 0] - p_t[2] * p_r[0 * 3 + 0]);
         if (t > ra + rb)
             return false;
 
         // L = A1 * B1
         ra = half_dimensions_a[0] * p_rf[2 * 3 + 1] + half_dimensions_a[2] * p_rf[0 * 3 + 1];
         rb = half_dimensions_b[0] * p_rf[1 * 3 + 2] + half_dimensions_b[2] * p_rf[1 * 3 + 0];
-        t  = abs(p_t[0] * p_r[2 * 3 + 1] - p_t[2] * p_r[0 * 3 + 1]);
+        t  = fabsf(p_t[0] * p_r[2 * 3 + 1] - p_t[2] * p_r[0 * 3 + 1]);
         if (t > ra + rb)
             return false;
 
         // L = A1 * B2
         ra = half_dimensions_a[0] * p_rf[2 * 3 + 2] + half_dimensions_a[2] * p_rf[0 * 3 + 2];
         rb = half_dimensions_b[0] * p_rf[1 * 3 + 1] + half_dimensions_b[1] * p_rf[1 * 3 + 0];
-        t  = abs(p_t[0] * p_r[2 * 3 + 2] - p_t[2] * p_r[0 * 3 + 2]);
+        t  = fabsf(p_t[0] * p_r[2 * 3 + 2] - p_t[2] * p_r[0 * 3 + 2]);
         if (t > ra + rb)
             return false;
 
         // L = A2 * B0
         ra = half_dimensions_a[0] * p_rf[1 * 3 + 0] + half_dimensions_a[1] * p_rf[0 * 3 + 0];
         rb = half_dimensions_b[1] * p_rf[2 * 3 + 2] + half_dimensions_b[2] * p_rf[2 * 3 + 1];
-        t  = abs(p_t[1] * p_r[0 * 3 + 0] - p_t[0] * p_r[1 * 3 + 0]);
+        t  = fabsf(p_t[1] * p_r[0 * 3 + 0] - p_t[0] * p_r[1 * 3 + 0]);
         if (t > ra + rb)
             return false;
 
         // L = A2 * B1
         ra = half_dimensions_a[0] * p_rf[1 * 3 + 1] + half_dimensions_a[1] * p_rf[0 * 3 + 1];
         rb = half_dimensions_b[0] * p_rf[2 * 3 + 2] + half_dimensions_b[2] * p_rf[2 * 3 + 0];
-        t  = abs(p_t[1] * p_r[0 * 3 + 1] - p_t[0] * p_r[1 * 3 + 1]);
+        t  = fabsf(p_t[1] * p_r[0 * 3 + 1] - p_t[0] * p_r[1 * 3 + 1]);
         if (t > ra + rb)
             return false;
 
         // L = A2 * B2
         ra = half_dimensions_a[0] * p_rf[1 * 3 + 2] + half_dimensions_a[1] * p_rf[0 * 3 + 2];
         rb = half_dimensions_b[0] * p_rf[2 * 3 + 1] + half_dimensions_b[1] * p_rf[2 * 3 + 0];
-        t  = abs(p_t[1] * p_r[0 * 3 + 2] - p_t[0] * p_r[1 * 3 + 2]);
+        t  = fabsf(p_t[1] * p_r[0 * 3 + 2] - p_t[0] * p_r[1 * 3 + 2]);
         if (t > ra + rb)
             return false;
 
@@ -384,7 +377,7 @@ namespace Pilot
     }
 
     bool CollisionDetection::OBBSphereIntersection(const Vector3&   box_size,
-                                                   const float      sphere_radius,
+                                                   float            sphere_radius,
                                                    const Transform& world_transform_a,
                                                    const Transform& world_transform_b,
                                                    CollisionInfo&   collision_info)
@@ -537,7 +530,7 @@ namespace Pilot
 
     bool CollisionDetection::RaySphereIntersection(const Ray&       r,
                                                    const Transform& world_transform,
-                                                   const float      sphere_radius,
+                                                   float            sphere_radius,
                                                    RayCollision&    collision)
     {
         Vector3 sphere_pos = world_transform.m_position;

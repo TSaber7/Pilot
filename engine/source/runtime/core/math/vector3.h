@@ -19,18 +19,18 @@ namespace Pilot
         float z {0.f};
 
     public:
-        Vector3() {}
+        Vector3() = default;
         Vector3(float x_, float y_, float z_) : x {x_}, y {y_}, z {z_} {}
 
         explicit Vector3(const float coords[3]) : x {coords[0]}, y {coords[1]}, z {coords[2]} {}
 
-        float operator[](const size_t i) const
+        float operator[](size_t i) const
         {
             assert(i < 3);
             return *(&x + i);
         }
 
-        float& operator[](const size_t i)
+        float& operator[](size_t i)
         {
             assert(i < 3);
             return *(&x + i);
@@ -49,11 +49,11 @@ namespace Pilot
 
         Vector3 operator-(const Vector3& rhs) const { return Vector3(x - rhs.x, y - rhs.y, z - rhs.z); }
 
-        Vector3 operator*(const float scalar) const { return Vector3(x * scalar, y * scalar, z * scalar); }
+        Vector3 operator*(float scalar) const { return Vector3(x * scalar, y * scalar, z * scalar); }
 
         Vector3 operator*(const Vector3& rhs) const { return Vector3(x * rhs.x, y * rhs.y, z * rhs.z); }
 
-        Vector3 operator/(const float scalar) const
+        Vector3 operator/(float scalar) const
         {
             assert(scalar != 0.0);
             return Vector3(x / scalar, y / scalar, z / scalar);
@@ -70,33 +70,33 @@ namespace Pilot
         Vector3 operator-() const { return Vector3(-x, -y, -z); }
 
         // overloaded operators to help Vector3
-        friend Vector3 operator*(const float scalar, const Vector3& rhs)
+        friend Vector3 operator*(float scalar, const Vector3& rhs)
         {
             return Vector3(scalar * rhs.x, scalar * rhs.y, scalar * rhs.z);
         }
 
-        friend Vector3 operator/(const float scalar, const Vector3& rhs)
+        friend Vector3 operator/(float scalar, const Vector3& rhs)
         {
             assert(rhs.x != 0 && rhs.y != 0 && rhs.z != 0);
             return Vector3(scalar / rhs.x, scalar / rhs.y, scalar / rhs.z);
         }
 
-        friend Vector3 operator+(const Vector3& lhs, const float rhs)
+        friend Vector3 operator+(const Vector3& lhs, float rhs)
         {
             return Vector3(lhs.x + rhs, lhs.y + rhs, lhs.z + rhs);
         }
 
-        friend Vector3 operator+(const float lhs, const Vector3& rhs)
+        friend Vector3 operator+(float lhs, const Vector3& rhs)
         {
             return Vector3(lhs + rhs.x, lhs + rhs.y, lhs + rhs.z);
         }
 
-        friend Vector3 operator-(const Vector3& lhs, const float rhs)
+        friend Vector3 operator-(const Vector3& lhs, float rhs)
         {
             return Vector3(lhs.x - rhs, lhs.y - rhs, lhs.z - rhs);
         }
 
-        friend Vector3 operator-(const float lhs, const Vector3& rhs)
+        friend Vector3 operator-(float lhs, const Vector3& rhs)
         {
             return Vector3(lhs - rhs.x, lhs - rhs.y, lhs - rhs.z);
         }
@@ -110,7 +110,7 @@ namespace Pilot
             return *this;
         }
 
-        Vector3& operator+=(const float scalar)
+        Vector3& operator+=(float scalar)
         {
             x += scalar;
             y += scalar;
@@ -126,7 +126,7 @@ namespace Pilot
             return *this;
         }
 
-        Vector3& operator-=(const float scalar)
+        Vector3& operator-=(float scalar)
         {
             x -= scalar;
             y -= scalar;
@@ -134,7 +134,7 @@ namespace Pilot
             return *this;
         }
 
-        Vector3& operator*=(const float scalar)
+        Vector3& operator*=(float scalar)
         {
             x *= scalar;
             y *= scalar;
@@ -150,7 +150,7 @@ namespace Pilot
             return *this;
         }
 
-        Vector3& operator/=(const float scalar)
+        Vector3& operator/=(float scalar)
         {
             assert(scalar != 0.0);
             x /= scalar;
@@ -176,7 +176,7 @@ namespace Pilot
         instead.
         */
 
-        float length() const { return sqrt(x * x + y * y + z * z); }
+        float length() const { return std::hypot(x, y, z); }
 
         /** Returns the square of the length(magnitude) of the vector.
         @remarks
@@ -242,7 +242,7 @@ namespace Pilot
 
         void normalise()
         {
-            float length = sqrt(x * x + y * y + z * z);
+            float length = std::hypot(x, y, z);
             if (length == 0.f)
                 return;
 
@@ -396,7 +396,7 @@ namespace Pilot
             return q;
         }
 
-        /** Returnsk_true if this vector is zero length. */
+        /** Returns true if this vector is zero length. */
         bool isZeroLength(void) const
         {
             float sqlen = (x * x) + (y * y) + (z * z);
@@ -428,12 +428,9 @@ namespace Pilot
         */
         Vector3 project(const Vector3& normal) const { return Vector3(*this - (this->dotProduct(normal) * normal)); }
 
-        Vector3 absoluteCopy() const { return Vector3(abs(x), abs(y), abs(z)); }
+        Vector3 absoluteCopy() const { return Vector3(fabsf(x), fabsf(y), fabsf(z)); }
 
-        static Vector3 lerp(const Vector3& lhs, const Vector3& rhs, const float alpha)
-        {
-            return lhs + alpha * (rhs - lhs);
-        }
+        static Vector3 lerp(const Vector3& lhs, const Vector3& rhs, float alpha) { return lhs + alpha * (rhs - lhs); }
 
         static Vector3 clamp(const Vector3& v, const Vector3& min, const Vector3& max)
         {

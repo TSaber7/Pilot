@@ -11,6 +11,7 @@ namespace Pilot
         REFLECTION_BODY(Component)
     protected:
         GObject* m_parent_object;
+        bool     m_is_dirty {false};
 
     public:
         Component(GObject * object) : m_parent_object {object} {}
@@ -19,8 +20,7 @@ namespace Pilot
 
         void setParentObject(GObject * object) { m_parent_object = object; }
 
-        virtual void tick(const float delta_time) {};
-        virtual void destroy() {};
+        virtual void tick(float delta_time) {};
 
         bool m_tick_in_editor_mode {false};
     };

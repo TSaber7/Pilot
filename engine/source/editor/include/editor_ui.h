@@ -10,6 +10,7 @@
 
 #include "editor/include/editor_file_service.h"
 
+#include <chrono>
 #include <map>
 #include <vector>
 
@@ -43,13 +44,14 @@ namespace Pilot
         void        createComponentUI(Reflection::ReflectionInstance& instance);
         void        createLeafNodeUI(Reflection::ReflectionInstance& instance);
         std::string getLeafUINodeParentLabel();
+        bool        isCursorInRect(Vector2 pos, Vector2 size) const;
 
         void showEditorUI();
         void showEditorMenu(bool* p_open);
         void showEditorWorldObjectsWindow(bool* p_open);
         void showEditorFileContentWindow(bool* p_open);
         void showEditorGameWindow(bool* p_open);
-        void showEditorDetialWindow(bool* p_open);
+        void showEditorDetailWindow(bool* p_open);
 
         void onReset();
         void onCursorPos(double xpos, double ypos);
@@ -78,6 +80,7 @@ namespace Pilot
         Vector2 m_engine_window_size {1280.0f, 768.0f};
         float   m_mouse_x {0.0f};
         float   m_mouse_y {0.0f};
+        float   m_camera_speed {0.05f};
 
         bool m_is_editor_mode {true};
         int  m_key_state {0};
@@ -93,5 +96,8 @@ namespace Pilot
         EditorTranslationAxis m_translation_axis;
         EditorRotationAxis    m_rotation_axis;
         EditorScaleAxis       m_scale_aixs;
+
+        EditorFileService                                  m_editor_file_service;
+        std::chrono::time_point<std::chrono::steady_clock> m_last_file_tree_update;
     };
 } // namespace Pilot

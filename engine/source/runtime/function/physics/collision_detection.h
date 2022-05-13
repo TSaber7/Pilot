@@ -1,5 +1,6 @@
 #pragma once
 
+#include "runtime/core/math/axis_aligned.h"
 #include "runtime/core/math/transform.h"
 
 #include "runtime/function/physics/physics_actor.h"
@@ -55,10 +56,7 @@ namespace Pilot
         CollisionDetection();
         ~CollisionDetection();
 
-        static bool IsOverlap(const Vector3& position_a,
-                              const Vector3& position_b,
-                              const Vector3& half_dimensions_a,
-                              const Vector3& half_dimensions_b);
+        static bool IsAABBOverlapped(const AxisAlignedBox& bounding_a, const AxisAlignedBox& position_b);
         static bool ObjectIntersection(PhysicsActor&  object_a,
                                        PhysicsActor&  object_b,
                                        unsigned int   id_a,
@@ -73,13 +71,13 @@ namespace Pilot
                                      const Transform& world_transform_a,
                                      const Transform& world_transform_b,
                                      CollisionInfo&   collision_info);
-        static bool SphereIntersection(const float      sphere_a_radius,
-                                       const float      sphere_b_radius,
+        static bool SphereIntersection(float            sphere_a_radius,
+                                       float            sphere_b_radius,
                                        const Transform& world_transform_a,
                                        const Transform& world_transform_b,
                                        CollisionInfo&   collision_info);
         static bool AABBSphereIntersection(const Vector3&   box_size,
-                                           const float      sphere_radius,
+                                           float            sphere_radius,
                                            const Transform& world_transform_a,
                                            const Transform& world_transform_b,
                                            CollisionInfo&   collision_info);
@@ -89,7 +87,7 @@ namespace Pilot
                                     const Transform& world_transform_b,
                                     CollisionInfo&   collision_info);
         static bool OBBSphereIntersection(const Vector3&   box_size,
-                                          const float      sphere_radius,
+                                          float            sphere_radius,
                                           const Transform& world_transform_a,
                                           const Transform& world_transform_b,
                                           CollisionInfo&   collision_info);
@@ -108,7 +106,7 @@ namespace Pilot
                                        RayCollision&    collision);
         static bool RaySphereIntersection(const Ray&       r,
                                           const Transform& world_transform,
-                                          const float      sphere_radius,
+                                          float            sphere_radius,
                                           RayCollision&    collision);
     };
 } // namespace Pilot

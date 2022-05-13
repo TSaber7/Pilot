@@ -15,19 +15,19 @@ namespace Pilot
         float x {0.f}, y {0.f}, z {0.f}, w {0.f};
 
     public:
-        Vector4() {}
+        Vector4() = default;
         Vector4(float x_, float y_, float z_, float w_) : x {x_}, y {y_}, z {z_}, w {w_} {}
         Vector4(const Vector3& v3, float w_) : x {v3.x}, y {v3.y}, z {v3.z}, w {w_} {}
 
         explicit Vector4(float coords[4]) : x {coords[0]}, y {coords[1]}, z {coords[2]}, w {coords[3]} {}
 
-        float operator[](const size_t i) const
+        float operator[](size_t i) const
         {
             assert(i < 4);
             return *(&x + i);
         }
 
-        float& operator[](const size_t i)
+        float& operator[](size_t i)
         {
             assert(i < 4);
             return *(&x + i);

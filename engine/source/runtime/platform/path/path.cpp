@@ -5,19 +5,19 @@ using namespace std;
 namespace Pilot
 {
     const filesystem::path Path::getRelativePath(const filesystem::path& directory,
-                                                 const filesystem::path& file_path) const
+                                                 const filesystem::path& file_path)
     {
         return file_path.lexically_relative(directory);
     }
 
-    const vector<string> Path::getPathSegments(const filesystem::path& file_path) const
+    const vector<string> Path::getPathSegments(const filesystem::path& file_path)
     {
         vector<string> segments;
         for (auto iter = file_path.begin(); iter != file_path.end(); ++iter)
         {
             segments.emplace_back(iter->generic_string());
         }
-        return move(segments);
+        return segments;
     }
 
     const tuple<string, string, string> Path::getFileExtensions(const filesystem::path& file_path) const

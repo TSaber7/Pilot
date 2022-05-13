@@ -1,9 +1,22 @@
 build/
-.vscode/
 cpm_modules/
 CPM_modules/
 CPM_*.cmake
 .DS_Store
+*.code-workspace
+
+# Visual Studio
+CMakeSettings.json
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# CLion
+.idea/
+compiledDependencies/
+cmake-build-*
+build-*
 
 # CMake.gitignore https://github.com/github/gitignore/blob/master/CMake.gitignore
 CMakeLists.txt.user
@@ -415,4 +428,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-

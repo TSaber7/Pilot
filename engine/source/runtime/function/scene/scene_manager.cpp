@@ -3,7 +3,9 @@
 #include "runtime/core/base/macro.h"
 
 #include "runtime/function/render/include/render/framebuffer.h"
+
 #include "runtime/resource/asset_manager/asset_manager.h"
+#include "runtime/resource/config_manager/config_manager.h"
 #include "runtime/resource/res_type/data/mesh_data.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -307,7 +309,14 @@ namespace Pilot
         return SceneBuffers::createTexture(texture);
     }
 
-    void SceneManager::initialize() { setSceneOnce(); }
+    void SceneManager::initialize()
+    {
+        GlobalRenderingRes global_rendering_res;
+
+        const auto& global_rendering_res_url = ConfigManager::getInstance().getGlobalRenderingResUrl();
+        AssetManager::getInstance().loadAsset(global_rendering_res_url, global_rendering_res);
+        setSceneOnce(global_rendering_res);
+    }
 
     int SceneManager::tick(FrameBuffer* buffer)
     {
@@ -323,7 +332,7 @@ namespace Pilot
         return SceneBuffers::imageFromHandle(handle);
     }
 
-    void SceneManager::addSceneObject(const GameObjectDesc&& go_desc) { m_go_descs.push_back(go_desc); }
+    void SceneManager::addSceneObject(const GameObjectDesc& go_desc) { m_go_descs.push_back(go_desc); }
 
     void SceneManager::syncSceneObjects()
     {
@@ -494,7 +503,7 @@ namespace Pilot
             m_scene->m_camera->setMainViewMatrix(view_matrix, type);
         }
     }
-    void SceneManager::setFOV(const float fov)
+    void SceneManager::setFOV(float fov)
     {
         if (m_scene && m_scene->m_camera)
         {
@@ -555,7 +564,7 @@ namespace Pilot
     void SceneManager::getOrCreateSkeletonBindingHandle(const std::string&           skeleton_binding_file,
                                                         VertexBufferHandle&          vertex_handle,
                                                         IndexBufferHandle&           index_handle,
-                                                        BoundingBox&                 bounding_box,
+                                                        AxisAlignedBox&              bounding_box,
                                                         SkeletonBindingBufferHandle& skeleton_binding_handle)
     {
         auto find_vertex = m_vertex_handle_map.find(skeleton_binding_file);
@@ -675,7 +684,7 @@ namespace Pilot
             if (m_mesh_handles_to_release.empty())
                 break;
 
-            auto mesh_handle = m_mesh_handles_to_release.front();
+            auto& mesh_handle = m_mesh_handles_to_release.front();
 
             RenderMesh mesh;
             mesh.m_vertexBuffer = mesh_handle.m_vertex_handle;
@@ -712,7 +721,7 @@ namespace Pilot
             if (m_material_handles_to_release.empty())
                 break;
 
-            auto material_handle = m_material_handles_to_release.front();
+            auto& material_handle = m_material_handles_to_release.front();
 
             Material material;
             material.m_baseColorTexture         = material_handle.m_image_handle0;
@@ -749,15 +758,15 @@ namespace Pilot
             if (m_skeleton_binding_handles_to_release.empty())
                 break;
 
-            auto handle = m_skeleton_binding_handles_to_release.front();
+            auto& skeleton_binding_handle = m_skeleton_binding_handles_to_release.front();
 
-            auto find_file = m_handle_skeleton_binding_map.find(handle);
+            auto find_file = m_handle_skeleton_binding_map.find(skeleton_binding_handle);
             if (find_file != m_handle_skeleton_binding_map.end())
             {
                 m_skeleton_binding_handle_map.erase(find_file->second);
-                m_handle_skeleton_binding_map.erase(handle);
+                m_handle_skeleton_binding_map.erase(skeleton_binding_handle);
             }
-            SceneBuffers::destroy(handle);
+            SceneBuffers::destroy(skeleton_binding_handle);
 
             m_skeleton_binding_handles_to_release.pop_front();
 
@@ -777,96 +786,95 @@ namespace Pilot
             SceneBuffers::destroy(image_handle);
         }
     }
-    void SceneManager::setSceneOnce()
+    void SceneManager::setSceneOnce(const GlobalRenderingRes& global_res)
     {
         if (m_scene && m_scene->m_loaded == false)
         {
-            m_scene->m_brdfLUT_texture_handle =
-                SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/default/brdf_schilk.hdr")
-                                                 .generic_string()
-                                                 .c_str());
+            m_scene->m_brdfLUT_texture_handle = SceneBuilder::loadTextureHDR(
+                AssetManager::getInstance().getFullPath(global_res.m_brdf_map).generic_string().c_str());
             m_scene->m_irradiance_texture_handle[0] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_X+.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_positive_x_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_irradiance_texture_handle[1] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_X-.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_negative_x_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_irradiance_texture_handle[2] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_Z+.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_positive_z_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_irradiance_texture_handle[3] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_Z-.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_negative_z_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_irradiance_texture_handle[4] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_Y+.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_positive_y_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_irradiance_texture_handle[5] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_irradiance_Y-.hdr")
+                                                 .getFullPath(global_res.m_skybox_irradiance_map.m_negative_y_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[0] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_X+.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_positive_x_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[1] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_X-.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_negative_x_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[2] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_Z+.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_positive_z_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[3] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_Z-.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_negative_z_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[4] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_Y+.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_positive_y_map)
                                                  .generic_string()
                                                  .c_str());
             m_scene->m_specular_texture_handle[5] =
                 SceneBuilder::loadTextureHDR(AssetManager::getInstance()
-                                                 .getFullPath("asset/texture/sky/skybox_specular_Y-.hdr")
+                                                 .getFullPath(global_res.m_skybox_specular_map.m_negative_y_map)
                                                  .generic_string()
                                                  .c_str());
 
-            m_scene->m_skyColor     = {0.53f, 0.81f, 0.98f};
-            m_scene->m_ambientLight = {{0.03f, 0.03f, 0.03f}};
-            m_scene->m_camera       = std::make_shared<PCamera>();
-            m_scene->m_camera->lookAt({-5.0f, 0.0f, 3.0f}, {-4.0f, 0.0f, 3.0f}, Vector3(0.0f, 0.0f, 1.0f));
-            m_scene->m_camera->m_zfar  = 1000.0f;
-            m_scene->m_camera->m_znear = 0.1f;
-            m_scene->m_camera->setAspect(1280.0f / 768.0f);
-            /*
-            m_scene->m_pointLights.m_lights = {// pos, power
-                                               {{-3.0f, 5.3f, 2.0f}, {500.0f, 0.0f, 0.0f}},
-                                               {{5.0f, 0.3f, 2.0f}, {0.0f, 500.0f, 0.0f}},
-                                               {{0.0f, 0.3f, 2.0f}, {0.0f, 0.0f, 500.0f}}};
-            */
-            m_scene->m_directionalLight.m_direction = Vector3(0.5, -0.5, 0.5).normalisedCopy();
-            m_scene->m_directionalLight.m_color     = Vector3(1.0, 1.0, 1.0);
-            m_scene->m_loaded                       = true;
+            m_scene->m_color_grading_LUT_texture_handle = SceneBuilder::loadTexture(
+                AssetManager::getInstance().getFullPath(global_res.m_color_grading_map).generic_string().c_str());
+
+            m_scene->m_sky_color     = global_res.m_sky_color.toVector3();
+            m_scene->m_ambient_light = {global_res.m_ambient_light.toVector3()};
+
+            const CameraPose& camera_pose = global_res.m_camera_config.m_pose;
+
+            m_scene->m_camera = std::make_shared<PCamera>();
+            m_scene->m_camera->lookAt(camera_pose.m_position, camera_pose.m_target, camera_pose.m_up);
+            m_scene->m_camera->m_zfar  = global_res.m_camera_config.m_z_far;
+            m_scene->m_camera->m_znear = global_res.m_camera_config.m_z_near;
+            m_scene->m_camera->setAspect(global_res.m_camera_config.m_aspect.x / global_res.m_camera_config.m_aspect.y);
+
+            m_scene->m_directional_light.m_direction = global_res.m_directional_light.m_direction.normalisedCopy();
+            m_scene->m_directional_light.m_color     = global_res.m_directional_light.m_color.toVector3();
+
+            m_scene->m_loaded = true;
         }
     }
 
-    const size_t SceneManager::getGObjectIDByMeshID(const size_t mesh_id) const
+    const size_t SceneManager::getGObjectIDByMeshID(size_t mesh_id) const
     {
         auto iter = m_mesh_id_gobejct_id_map.find(mesh_id);
         if (iter == m_mesh_id_gobejct_id_map.end())
